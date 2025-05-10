@@ -1,0 +1,28 @@
+{
+  "name": "idenclave",
+  "version": "1.0.0",
+  "description": "Decentralized Identity and Credential Management System",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "cd apps/frontend && npm run dev",
+    "build": "cd apps/frontend && npm run build",
+    "start": "cd apps/frontend && npm run start",
+    "test": "cd apps/frontend && npm run test",
+    "clean": "rm -rf node_modules && cd apps/frontend && rm -rf node_modules"
+  },
+  "keywords": ["solana", "identity", "credentials", "zkp"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@solana/wallet-adapter-base": "^0.9.26",
+    "@solana/wallet-adapter-phantom": "^0.9.27",
+    "@solana/wallet-adapter-react": "^0.15.38",
+    "@solana/wallet-adapter-react-ui": "^0.9.38",
+    "@solana/wallet-adapter-wallets": "^0.19.36",
+    "@solana/web3.js": "^1.98.2"
+  }
+}

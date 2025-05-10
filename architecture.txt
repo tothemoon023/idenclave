@@ -1,0 +1,106 @@
+bsolutely! Here’s a detailed design document for your IDenclave MVP, including the current architecture, key components, and suggestions for components or features that are yet to be made. This will help you or any collaborator quickly get up to speed in a new conversation or handoff.
+IDenclave MVP – Design Document
+Project Overview
+IDenclave is a decentralized identity and credential management system built on Solana. It enables users to register decentralized identities (DIDs), issue and store verifiable credentials (VCs) on IPFS, and generate zero-knowledge proofs (ZKPs) for privacy-preserving verification.
+
+1. Architecture Overview
+Frontend: React + TypeScript (Vite)
+Blockchain: Solana (DID and credential smart contracts)
+Storage: IPFS (for off-chain credential data)
+ZKP: snarkjs (for proof generation/verification)
+Wallet: Solana wallet adapter (Phantom, Solflare, etc.)
+
+2. Key Components (Current & Planned)
+
+A. Onboarding & UX
+LandingPage.tsx: Hero section, wallet connect, feature highlights, onboarding modal.
+HelpModal.tsx: Step-by-step onboarding guide with progress indicator.
+HowItWorksSection.tsx: Visual explanation of the IDenclave flow.
+
+B. Identity Management
+DIDRegistration.tsx:
+Registers a DID for the connected wallet.
+Shows transaction signature and Solana Explorer link.
+Handles registration status and errors.
+
+C. Credential Management
+CredentialIssuance.tsx:
+Form for issuing credentials (type, claims, expiration).
+Uploads credential to IPFS, stores hash on Solana.
+Shows transaction signature and IPFS link.
+Validates input and handles errors.
+CredentialDashboard.tsx (Planned):
+List and manage user’s issued and received credentials.
+View credential details, status, and actions (e.g., generate proof).
+
+D. Zero-Knowledge Proofs
+ZKPVerification.tsx:
+Allows user to upload/select circuit and zkey files.
+Generates ZKPs for claims using snarkjs.
+Displays proof and public signals (copy/export).
+Verifies proof and shows result.
+ZKPGenerator.tsx (Planned/Optional):
+More user-friendly wizard for generating proofs for various credential types.
+Templates for common proofs (e.g., “Over 18”, “KYC passed”).
+
+E. General UI
+NavBar.tsx: Navigation between main sections.
+AboutSection.tsx, FAQSection.tsx, ContactSection.tsx: Informational and support content.
+
+3. Backend/Smart Contract Integration
+Solana Program:
+Handles DID registration and credential issuance.
+Stores references to IPFS hashes for credentials.
+(Planned) Add support for credential revocation and updates.
+IPFS:
+Stores credential data off-chain.
+Hashes are referenced on-chain for verification.
+ZKP Circuits:
+Circuits for common credential proofs (e.g., age, KYC).
+(Planned) UI for uploading new circuits and keys.
+
+4. Testing & Quality
+Automated Tests:
+Jest + React Testing Library for frontend logic and UI.
+Mocked wallet, Solana, and IPFS for unit tests.
+Manual Testing:
+End-to-end flows for onboarding, registration, credential issuance, and proof generation.
+
+5. Components/Features Yet to Be Made or Improved
+A. Credential Dashboard
+List all credentials (issued and received)
+Actions: view, generate proof, revoke (if supported), share
+B. Verifier Portal
+UI for verifiers to submit and check proofs
+Display verification results and credential details
+C. Notifications/Toasts
+User feedback for success, errors, and important actions
+D. Circuit Management
+UI for uploading/selecting ZKP circuits and keys
+Templates for common proof types
+E. Credential Revocation (Advanced)
+Smart contract and UI for revoking credentials
+F. Mobile Responsiveness & Accessibility
+Ensure all flows are mobile-friendly and accessible
+G. User Profile/Settings (Optional)
+Manage DID, credentials, and preferences
+
+6. Suggested Next Steps
+Build out the CredentialDashboard and Verifier Portal.
+Add notifications/toasts for better UX.
+Expand ZKP support with more circuits and templates.
+Add more robust error handling and edge-case tests.
+Polish mobile and accessibility support.
+
+7. References & Context
+Solana Docs: https://docs.solana.com/
+IPFS Docs: https://docs.ipfs.tech/
+snarkjs Docs: https://github.com/iden3/snarkjs
+Solana Wallet Adapter: https://github.com/solana-labs/wallet-adapter
+
+8. Handoff Checklist
+All code is in /apps/frontend/src
+Tests are in /apps/frontend/src/__tests__
+Jest config is in /apps/frontend/jest.config.cjs
+Smart contract addresses and endpoints are in /apps/frontend/src/config/env.ts
+All flows are documented in this design doc

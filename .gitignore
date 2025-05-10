@@ -1,0 +1,72 @@
+# Node modules
+node_modules/
+apps/frontend/node_modules/
+myanchorproject/node_modules/
+
+# Build outputs
+dist/
+build/
+apps/frontend/dist/
+apps/frontend/build/
+
+# Vite cache
+.vite/
+apps/frontend/.vite/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.*
+apps/frontend/.env
+apps/frontend/.env.*
+
+# Test coverage
+coverage/
+apps/frontend/coverage/
+
+# Jest cache
+.jest/
+apps/frontend/.jest/
+
+# IDE/editor files
+.vscode/
+.idea/
+.DS_Store
+**/.DS_Store
+*.swp
+
+# Misc
+*.local
+
+# Optional: ignore mock files if generated
+__mocks__/
+
+# Anchor/Smart contract artifacts
+myanchorproject/.anchor/
+myanchorproject/target/
+myanchorproject/test-ledger/
+myanchorproject/.yarn/
+myanchorproject/**/*.rs.bk
+
+# Rust/Cargo
+Cargo.lock
+Cargo.toml
+myanchorproject/Cargo.lock
+myanchorproject/Cargo.toml
+packages/contracts-build/Cargo.lock
+packages/contracts-build/Cargo.toml
+packages/idenclave/Cargo.lock
+packages/idenclave/Cargo.toml
+
+# Ignore build artifacts in packages
+packages/contracts-build/target/
+packages/idenclave/target/
+
+# Ignore test-ledger and new-ledger folders if present
+test-ledger/
+new-ledger/
+packages/idenclave/test-ledger/
