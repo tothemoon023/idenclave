@@ -1,2 +1,26 @@
 Program path: /Users/malikathaiyab/solana_workspace/Q2builder_cohort/malika_capstone/myanchorproject/target/deploy/idenclave.so...
 Program Id: 7KkYh3XpHkZapKE54NFX7HWN52eLMBPHp9sjhiE4B4JJ
+
+Program Id: HbZUJZypivrgJMZZ4QVwpHHk1uCHFmBmCi4pYbxZKi2r
+Program Id: E7C52ahzQMJB7u9LQmbTtRxYDeHS814HGeWZcWZgkuag// new 
+
+Check this project root and analyze the project. It is an Anchor project called IDenclave -a decentralized identity and credential management system built on Solana. 
+It enables users to register decentralized identities (DIDs), issue and store verifiable credentials (VCs) on IPFS, and generate zero-knowledge proofs (ZKPs) for privacy-preserving verification. 
+Some of these are still under development and I need help in finishing it. All the technical details are in architecture.txt and requirements are their in requirements.txt kept under the project root.
+Anaylze the project repo, find out what's implemented and what's pending. Lets get started.
+
+malikathaiyab@Malikas-MacBook-Air idenclave_solana % solana address
+BUvDesPUYR3623AJd9GFoqwtaRvy4ohQm4ZDmgXbFeP4
+
+-------------------------------
+malikathaiyab@Malikas-MacBook-Air myanchorproject % solana-keygen new --no-bip39-passphrase --outfile target/deploy/idenclave-keypair.json --force              solana-keygen new --no-bip39-passphrase --outfile target/deploy/idenclave-keypair.json --force
+Generating a new keypair
+Wrote new keypair to target/deploy/idenclave-keypair.json
+===========================================================================
+pubkey: E7C52ahzQMJB7u9LQmbTtRxYDeHS814HGeWZcWZgkuag
+===========================================================================
+Save this seed phrase to recover your new keypair:
+false supply learn steel enjoy unfold spare outer light afford s
+
+
+

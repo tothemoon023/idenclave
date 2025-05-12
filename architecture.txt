@@ -1,4 +1,4 @@
-bsolutely! Here’s a detailed design document for your IDenclave MVP, including the current architecture, key components, and suggestions for components or features that are yet to be made. This will help you or any collaborator quickly get up to speed in a new conversation or handoff.
+Here’s a detailed design document for my IDenclave MVP, including the current architecture, key components, and suggestions for components or features that are yet to be made. This will help you or any collaborator quickly get up to speed in a new conversation or handoff.
 IDenclave MVP – Design Document
 Project Overview
 IDenclave is a decentralized identity and credential management system built on Solana. It enables users to register decentralized identities (DIDs), issue and store verifiable credentials (VCs) on IPFS, and generate zero-knowledge proofs (ZKPs) for privacy-preserving verification.

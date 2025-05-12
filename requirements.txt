@@ -1,0 +1,72 @@
+Below is an MVP (Minimum Viable Product) architecture for *IDenclave*, a decentralized identity system on Solana. 
+## IDenclave MVP Architecture Overview
+
+*IDenclave* aims to provide a decentralized identity solution leveraging Solana's blockchain for secure, scalable, and privacy-preserving identity management. The MVP focuses on core functionalities to demonstrate the concept through user and verifier interactions. Below are the key components and features of the architecture.
+
+## Key Features
+
+### 1. User Registration (Decentralized Identity Creation)
+- **Frontend**: A React-based application with wallet integration (e.g., Phantom for Solana) to allow users to create and register their Decentralized Identity (DID). The user interface (UI) will guide users through the registration process.
+- **Smart Contract (Solana, Anchor)**: A program written in Rust using the Anchor framework to register a new DID on-chain. Only essential data, such as public keys or references, will be stored on-chain to avoid storing sensitive information[2].
+
+### 2. Credential Issuance
+- **Credential Issuer**: This could be a business or a demo admin who issues verifiable credentials to users (e.g., “over 18” or “KYC passed”). The issuer signs the credential with their private key to ensure authenticity.
+- **Storage**: The credential itself is encrypted and stored off-chain (e.g., on IPFS), while a reference (hash) to this data is stored on-chain. The user retains the decryption key and can share proofs as needed[7].
+
+### 3. Selective Disclosure / Zero-Knowledge Proofs (ZKP)
+- **Frontend (User Side)**: A UI component in the React app allows users to generate a zero-knowledge proof for a specific claim (e.g., proving they are over 18 without revealing their exact age). This uses an existing ZKP library such as *snarkjs*, *circom*, or *Pinocchio*.
+- **Frontend (Verifier Side)**: A UI for verifiers to request and verify a specific claim. The verifier receives the ZKP and validates it using the same ZKP library, ensuring privacy is maintained[3].
+
+### 4. Verifier Portal
+- **Frontend**: A simple React dashboard designed for businesses or verifiers to request, receive, and verify user credentials.
+- **Backend (Optional for MVP)**: A Node.js/GraphQL API to facilitate communication between users and verifiers if needed. For the MVP, this can be a peer-to-peer interaction to keep it lightweight.
+
+### 5. Off-chain Storage (IPFS)
+- **IPFS Node or Pinning Service**: Used to store encrypted credentials and ZKPs. Only the hashes or references to these data are stored on-chain to ensure privacy and reduce on-chain storage costs[7].
+
+### 6. Blockchain Layer (Solana)
+- **Anchor Smart Contract**: Handles DID registration, stores credential references (hashes), and emits events for credential issuance and verification. This ensures a tamper-proof record of identity interactions on Solana[2][4].
+
+### 7. Security & Privacy
+- **Encryption**: All credentials and sensitive user data are encrypted before leaving the user’s device, ensuring data security.
+- **Zero-Knowledge Proofs (ZKP)**: Used for selective disclosure, allowing users to prove specific facts without revealing the underlying raw data[3].
+
+## Architecture Diagram (Textual Representation)
+
+```
+[User Wallet/React App]
+       | 
+       | 1. Register DID
+       v
+[Solana Smart Contract (Anchor)]
+       | 
+       | 2. Issue Credential (reference/hash stored on-chain)
+       v
+[IPFS - Encrypted Credential Storage]
+       | 
+       | 3. Generate ZKP (User)
+       v
+[Verifier Portal (React App)]
+       | 
+       | 4. Verify Proof (ZKP)
+       v
+[Solana Smart Contract (for proof verification, optional)]
+```
+
+## Component Summary
+
+| Component                | Technology            | Purpose                                      |
+|--------------------------|-----------------------|----------------------------------------------|
+| React Frontend           | React, Web3.js        | User and verifier UIs, wallet connection     |
+| Solana Smart Contract    | Anchor, Rust          | DID registration, credential ref storage     |
+| Off-chain Storage        | IPFS                  | Encrypted credential/ZKP storage            |
+| ZKP Library              | snarkjs/circom/Pinocchio | Generate/verify selective proofs          |
+| Backend (optional)       | Node.js, GraphQL      | API for advanced flows (not required for MVP)|
+
+## MVP Flow Example
+
+- **Step 1**: A user registers their identity (DID) via their wallet through the React frontend.
+- **Step 2**: An issuer issues a credential (e.g., “over 18”), which is encrypted and stored on IPFS. A hash of this credential is stored on-chain via the Solana smart contract.
+- **Step 3**: The user generates a ZKP for a specific claim (e.g., proving they are over 18) and shares it with a verifier through the frontend.
+- **Step 4**: The verifier checks the proof using the ZKP library and validates the claim without accessing the user’s full data.
+

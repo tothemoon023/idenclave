@@ -26,7 +26,7 @@ const env: EnvConfig = {
         network: import.meta.env.VITE_SOLANA_NETWORK || 'devnet',
         rpcUrl: import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com',
         wsUrl: import.meta.env.VITE_SOLANA_WS_URL || 'wss://api.devnet.solana.com',
-        programId: import.meta.env.VITE_SOLANA_PROGRAM_ID || ''
+        programId: import.meta.env.VITE_SOLANA_PROGRAM_ID || 'E7C52ahzQMJB7u9LQmbTtRxYDeHS814HGeWZcWZgkuag'
     },
     APP: {
         name: import.meta.env.VITE_APP_NAME || 'IDenclave',

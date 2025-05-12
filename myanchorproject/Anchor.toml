@@ -1,12 +1,16 @@
 [toolchain]
 package_manager = "yarn"
+anchor_version = "0.29.0"
 
 [features]
 resolution = true
 skip-lint = false
 
 [programs.localnet]
-myanchorproject = "7tyU7QpEua1MBASRtADCqeUJ5NhoUMMfw3a6SzUHoeYA"
+idenclave = "E7C52ahzQMJB7u9LQmbTtRxYDeHS814HGeWZcWZgkuag"
+
+[programs.devnet]
+idenclave = "E7C52ahzQMJB7u9LQmbTtRxYDeHS814HGeWZcWZgkuag"
 
 [registry]
 url = "https://api.apr.dev"
