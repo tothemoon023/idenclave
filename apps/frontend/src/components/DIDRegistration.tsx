@@ -146,7 +146,7 @@ export const DIDRegistration: React.FC = () => {
         
         {/* Network and Balance Status */}
         {wallet.publicKey && (
-          <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f1f5f9', borderRadius: '0.5rem', fontSize: '0.875rem' }}>
+          <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f1f5f9', borderRadius: '0.5rem', fontSize: '0.875rem', color: '#334155' }}>
             <div style={{ marginBottom: '0.5rem' }}>
               <strong>Network:</strong> {networkVerified ? '✅ Devnet' : '❌ Not Devnet'}
             </div>

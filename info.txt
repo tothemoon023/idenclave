@@ -2,7 +2,8 @@ Program path: /Users/malikathaiyab/solana_workspace/Q2builder_cohort/malika_caps
 Program Id: 7KkYh3XpHkZapKE54NFX7HWN52eLMBPHp9sjhiE4B4JJ
 
 Program Id: HbZUJZypivrgJMZZ4QVwpHHk1uCHFmBmCi4pYbxZKi2r
-Program Id: E7C52ahzQMJB7u9LQmbTtRxYDeHS814HGeWZcWZgkuag// new 
+Program Id: E7C52ahzQMJB7u9LQmbTtRxYDeHS814HGeWZcWZgkuag
+// new 
 
 Check this project root and analyze the project. It is an Anchor project called IDenclave -a decentralized identity and credential management system built on Solana. 
 It enables users to register decentralized identities (DIDs), issue and store verifiable credentials (VCs) on IPFS, and generate zero-knowledge proofs (ZKPs) for privacy-preserving verification. 
@@ -11,6 +12,7 @@ Anaylze the project repo, find out what's implemented and what's pending. Lets g
 
 malikathaiyab@Malikas-MacBook-Air idenclave_solana % solana address
 BUvDesPUYR3623AJd9GFoqwtaRvy4ohQm4ZDmgXbFeP4
+Fn79hmpPaRKmMhN5TN4nQd3YtsNzD8zy8bS728pSs3WQ //new
 
 -------------------------------
 malikathaiyab@Malikas-MacBook-Air myanchorproject % solana-keygen new --no-bip39-passphrase --outfile target/deploy/idenclave-keypair.json --force              solana-keygen new --no-bip39-passphrase --outfile target/deploy/idenclave-keypair.json --force
@@ -22,5 +24,31 @@ pubkey: E7C52ahzQMJB7u9LQmbTtRxYDeHS814HGeWZcWZgkuag
 Save this seed phrase to recover your new keypair:
 false supply learn steel enjoy unfold spare outer light afford s
 
+alikathaiyab@Malikas-MacBook-Air idenclave_solana % solana-keygen new --no-bip39-passphrase --force
+Generating a new keypair
+Wrote new keypair to /Users/malikathaiyab/.config/solana/id.json
+========================================================================
+pubkey: Fn79hmpPaRKmMhN5TN4nQd3YtsNzD8zy8bS728pSs3WQ
+========================================================================
+Save this seed phrase to recover your new keypair:
+sponsor roast abandon express box reduce dice gown lawn web trial vanish
+========================================================================
+malikathaiyab@Malikas-MacBook-Air idenclave_solana % 
 
+VITE_IPFS_PROJECT_ID=6bd98c87cbcd4a3c9972ab1bc98672d4
+VITE_IPFS_PROJECT_SECRET=+bZlHndA2tHKYKarXpCY1FH5ziu76KJNLlC64jVqTMx5p9z822W3Qg
+---------------------------------------
+web3.Storage
 
+VITE_WEB3STORAGE_TOKEN=did:key:z6Mkgsb5ftxZXiErxU5bpBHNdQnPTijECnFwiP5NMHLuiJm7
+This is API token
+
+Try issuing a credential. 
+You should see a new IPFS hash, and you can view your file at:
+https://w3s.link/ipfs/<cid>
+
+pinata
+
+API Key: a456d41f573c267daf16
+API Secret: b2b24b9d7ac25c94e7072be5f936f41b038f8dfc5eefeec66a1c15277c6ef2aa
+JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiI1MDJlZGY5YS0zN2FjLTQ1MWUtYmU0Ny0zNDlkOWJjYzEyZmEiLCJlbWFpbCI6Im1hbGlrYXRoYWl5YWIwMjNAcHJvdG9ubWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJGUkExIn0seyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJOWUMxIn1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiYTQ1NmQ0MWY1NzNjMjY3ZGFmMTYiLCJzY29wZWRLZXlTZWNyZXQiOiJiMmIyNGI5ZDdhYzI1Yzk0ZTcwNzJiZTVmOTM2ZjQxYjAzOGY4ZGZjNWVlZmVlYzY2YTFjMTUyNzdjNmVmMmFhIiwiZXhwIjoxNzc4NjkwMDQzfQ.jJs6r9E7uZB0gVne-SihG8u9_rJz_kR0NyKrzWxV9IA

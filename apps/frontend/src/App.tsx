@@ -18,6 +18,8 @@ import HelpModal from './components/HelpModal';
 const PAGES = ['landing', 'about', 'how', 'issuance', 'verification', 'registration'] as const;
 type Page = typeof PAGES[number];
 
+console.log('=== APP.TSX IS LOADED ===');
+
 function App() {
     const [page, setPage] = useState<Page>('landing');
     const [helpOpen, setHelpOpen] = useState(false);

@@ -1,17 +1,18 @@
-import { Web3Storage, File } from 'web3.storage';
-
-// TODO: Replace with your Web3.Storage API token from https://web3.storage/tokens/
-const WEB3STORAGE_TOKEN = 'YOUR_WEB3STORAGE_API_TOKEN';
-
-function getWeb3Client() {
-  return new Web3Storage({ token: WEB3STORAGE_TOKEN });
-}
-
-export async function uploadToIPFS(content: string | Uint8Array): Promise<string> {
-  const client = getWeb3Client();
-  const file = new File([content], 'credential.enc');
-  const cid = await client.put([file]);
-  return cid;
+// New upload function using NFT.Storage HTTP API
+export async function uploadToNFTStorage(content: string | Uint8Array, apiKey: string): Promise<string> {
+  const response = await fetch('https://api.nft.storage/upload', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/octet-stream',
+    },
+    body: typeof content === 'string' ? new TextEncoder().encode(content) : content,
+  });
+  if (!response.ok) {
+    throw new Error(`NFT.Storage upload failed: ${response.status} ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data.value.cid;
 }
 
 export async function fetchFromIPFS(cid: string): Promise<string> {
@@ -20,4 +21,25 @@ export async function fetchFromIPFS(cid: string): Promise<string> {
   const res = await fetch(url);
   if (!res.ok) throw new Error('Unable to fetch file from IPFS');
   return await res.text();
+}
+
+export async function uploadToPinata(content: string | Uint8Array, apiKey: string): Promise<string> {
+  const url = 'https://api.pinata.cloud/pinning/pinFileToIPFS';
+  const formData = new FormData();
+  const file = new Blob([content], { type: 'application/octet-stream' });
+  formData.append('file', file, 'credential.enc');
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Pinata upload failed: ${response.status} ${response.statusText}`);
+  }
+  const data = await response.json();
+  return data.IpfsHash;
 }

@@ -1,0 +1,5 @@
+[build]
+target = "bpfel-unknown-unknown"
+
+[term]
+verbose = false 

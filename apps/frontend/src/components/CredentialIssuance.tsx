@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { Connection, PublicKey, Transaction } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, TransactionInstruction, SystemProgram } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { create } from 'ipfs-http-client';
+import { uploadToPinata } from '../utils/ipfs';
+import BN from 'bn.js';
+import { Program, AnchorProvider, web3 } from '@project-serum/anchor';
+import idl from '../config/idenclave.json';
+import { WalletContextState } from '@solana/wallet-adapter-react';
 
 interface CredentialIssuanceProps {
   programId: PublicKey;
@@ -16,6 +20,18 @@ interface CredentialData {
   expiresAt: string;
 }
 
+// Helper to get default expiration date in 'YYYY-MM-DDTHH:MM' format
+const getDefaultExpiration = () => {
+  const date = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+  return date.toISOString().slice(0, 16);
+};
+
+// Helper to get the minimum allowed expiration date (now + 1 minute)
+const getMinExpiration = () => {
+  const now = new Date(Date.now() + 60 * 1000);
+  return now.toISOString().slice(0, 16);
+};
+
 export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programId, connection }) => {
   const wallet = useWallet();
   const [loading, setLoading] = useState(false);
@@ -25,40 +41,51 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
     claims: {},
     issuer: '',
     issuedAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: getDefaultExpiration(),
   });
   const [txSignature, setTxSignature] = useState<string | null>(null);
   const [ipfsHash, setIpfsHash] = useState<string | null>(null);
+  const [claimKey, setClaimKey] = useState('');
+  const [claimValue, setClaimValue] = useState('');
 
-  // Initialize IPFS client with Infura
-  const ipfs = create({
-    host: 'ipfs.infura.io',
-    port: 5001,
-    protocol: 'https',
-    headers: {
-      authorization: 'Basic ' + btoa(
-        import.meta.env.VITE_INFURA_IPFS_PROJECT_ID + ':' +
-        import.meta.env.VITE_INFURA_IPFS_PROJECT_SECRET
-      ),
-    },
-  });
+  // Debug: Print NFT.Storage token
+  console.log('NFT.Storage token:', import.meta.env.VITE_PINATA_JWT);
+
+  async function uploadCredentialToIPFS(obj: any): Promise<string> {
+    const json = JSON.stringify(obj);
+    const apiKey = import.meta.env.VITE_PINATA_JWT;
+    if (!apiKey) throw new Error('Pinata API key not set');
+    return await uploadToPinata(json, apiKey);
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setCredentialData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'expiresAt' ? value : value
     }));
   };
 
-  const handleClaimChange = (key: string, value: string) => {
-    setCredentialData(prev => ({
-      ...prev,
-      claims: {
-        ...prev.claims,
-        [key]: value
-      }
-    }));
+  const handleClaimKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setClaimKey(e.target.value);
+  };
+
+  const handleClaimValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setClaimValue(e.target.value);
+  };
+
+  const handleAddClaim = () => {
+    if (claimKey.trim() && claimValue.trim()) {
+      setCredentialData(prev => ({
+        ...prev,
+        claims: {
+          ...prev.claims,
+          [claimKey]: claimValue
+        }
+      }));
+      setClaimKey('');
+      setClaimValue('');
+    }
   };
 
   const validateCredential = () => {
@@ -69,88 +96,49 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
   };
 
   const issueCredential = async () => {
-    if (!wallet.publicKey) {
-      setError('Please connect your wallet first');
-      return;
-    }
-
-    const validationError = validateCredential();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setTxSignature(null);
-    setIpfsHash(null);
-
     try {
-      // 1. Prepare credential data
-      const credential = {
-        ...credentialData,
-        issuer: wallet.publicKey.toString(),
-      };
-
-      // 2. Upload to IPFS
-      let cid;
-      try {
-        const result = await ipfs.add(JSON.stringify(credential));
-        cid = result.cid;
-        setIpfsHash(cid.toString());
-      } catch (ipfsErr) {
-        setError('Failed to upload credential to IPFS. Please try again.');
-        setLoading(false);
-        return;
+      if (!wallet.publicKey) {
+        throw new Error('Wallet not connected');
       }
-      const credentialRef = Buffer.from(cid.toString());
 
-      // 3. Create the issuance instruction
+      // Create Anchor provider
+      const provider = new AnchorProvider(connection, wallet as any, {});
+      const program = new Program(idl as any, programId, provider);
+
+      // Create credential account
+      const credentialSeed = Buffer.from(credentialData.type);
       const [credentialAccount] = await PublicKey.findProgramAddress(
-        [Buffer.from('credential'), credentialRef],
-        programId
+        [Buffer.from('credential'), credentialSeed],
+        program.programId
       );
 
-      const instruction = {
-        programId,
-        keys: [
-          { pubkey: credentialAccount, isSigner: false, isWritable: true },
-          { pubkey: wallet.publicKey, isSigner: true, isWritable: false },
-        ],
-        data: Buffer.from([
-          6, // IssueCredential instruction
-          ...credentialRef,
-          ...Buffer.from(new Date().getTime().toString()),
-          ...Buffer.from(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).getTime().toString()),
-        ]),
-      };
+      // Find PDA for the identity
+      const [identityAccount] = PublicKey.findProgramAddressSync(
+        [Buffer.from("identity"), wallet.publicKey.toBuffer()],
+        program.programId
+      );
 
-      const transaction = new Transaction().add(instruction);
-      let signature;
-      try {
-        signature = await wallet.sendTransaction(transaction, connection);
-        await connection.confirmTransaction(signature);
-        setTxSignature(signature);
-      } catch (solanaErr) {
-        setError('Failed to send transaction to Solana. Please try again.');
-        setLoading(false);
-        return;
-      }
+      // Create the transaction
+      const tx = await program.methods
+        .issueCredential(
+          Array.from(credentialSeed),
+          new BN(Date.now()),
+          new BN(new Date(credentialData.expiresAt).getTime())
+        )
+        .accounts({
+          credential: credentialAccount,
+          issuer: wallet.publicKey,
+          identity: identityAccount,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
 
-      // Reset form
-      setCredentialData({
-        type: '',
-        claims: {},
-        issuer: '',
-        issuedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      });
-
-    } catch (err) {
-      console.error('Error issuing credential:', err);
-      setError('Unexpected error occurred during credential issuance.');
-    } finally {
-      setLoading(false);
+      console.log('Transaction signature:', tx);
+      setTxSignature(tx);
+      setError(null);
+    } catch (error) {
+      console.error('Error issuing credential:', error);
+      setError('Error issuing credential. See console for details.');
     }
   };
 
@@ -196,7 +184,7 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
             value={credentialData.type}
             onChange={handleInputChange}
             placeholder="e.g., AgeVerification"
-            style={{ width: '100%', padding: '0.7rem', border: '1.5px solid #b6b8d6', borderRadius: 8, fontSize: 16, marginBottom: 8, background: '#fff', transition: 'border 0.2s, box-shadow 0.2s' }}
+            style={{ width: '100%', padding: '0.7rem', border: '1.5px solid #a5b4fc', borderRadius: 8, fontSize: 16, marginBottom: 8, background: '#f3f4f6', color: '#334155', transition: 'border 0.2s, box-shadow 0.2s' }}
             aria-label="Credential Type"
             onFocus={e => (e.target.style.boxShadow = '0 0 0 2px #6366f1')}
             onBlur={e => (e.target.style.boxShadow = 'none')}
@@ -204,12 +192,13 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
         </div>
         <div className="form-group" style={{ marginBottom: '1.5rem', position: 'relative', zIndex: 1 }}>
           <label style={{ fontWeight: 600, color: '#374151', marginBottom: 6, display: 'block' }}>Claims</label>
-          <div className="claims-container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="claims-container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 70px', gap: '1rem', paddingRight: '0.5rem' }}>
             <input
               type="text"
               placeholder="Claim key"
-              onChange={(e) => handleClaimChange(e.target.value, '')}
-              style={{ padding: '0.7rem', border: '1.5px solid #b6b8d6', borderRadius: 8, fontSize: 16, background: '#fff', transition: 'border 0.2s, box-shadow 0.2s' }}
+              value={claimKey}
+              onChange={handleClaimKeyChange}
+              style={{ padding: '0.7rem', border: '1.5px solid #a5b4fc', borderRadius: 8, fontSize: 16, background: '#f3f4f6', color: '#334155', transition: 'border 0.2s, box-shadow 0.2s' }}
               aria-label="Claim Key"
               onFocus={e => (e.target.style.boxShadow = '0 0 0 2px #6366f1')}
               onBlur={e => (e.target.style.boxShadow = 'none')}
@@ -217,13 +206,22 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
             <input
               type="text"
               placeholder="Claim value"
-              onChange={(e) => handleClaimChange(Object.keys(credentialData.claims)[0], e.target.value)}
-              style={{ padding: '0.7rem', border: '1.5px solid #b6b8d6', borderRadius: 8, fontSize: 16, background: '#fff', transition: 'border 0.2s, box-shadow 0.2s' }}
+              value={claimValue}
+              onChange={handleClaimValueChange}
+              style={{ padding: '0.7rem', border: '1.5px solid #a5b4fc', borderRadius: 8, fontSize: 16, background: '#f3f4f6', color: '#334155', transition: 'border 0.2s, box-shadow 0.2s' }}
               aria-label="Claim Value"
               onFocus={e => (e.target.style.boxShadow = '0 0 0 2px #6366f1')}
               onBlur={e => (e.target.style.boxShadow = 'none')}
             />
+            <button type="button" onClick={handleAddClaim} style={{ padding: '0.5rem 0.7rem', borderRadius: 8, background: '#6366f1', color: '#fff', border: 'none', fontWeight: 600, fontSize: 15, cursor: 'pointer', marginLeft: '0.2rem', height: '36px', maxWidth: '48px', width: '100%' }}>Add</button>
           </div>
+          {Object.keys(credentialData.claims).length > 0 && (
+            <ul style={{ marginTop: 12, paddingLeft: 18 }}>
+              {Object.entries(credentialData.claims).map(([key, value]) => (
+                <li key={key} style={{ color: '#334155', fontSize: 15 }}><strong>{key}:</strong> {value}</li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="form-group" style={{ marginBottom: '2rem', position: 'relative', zIndex: 1 }}>
           <label style={{ fontWeight: 600, color: '#374151', marginBottom: 6, display: 'block' }}>Expiration Date</label>
@@ -232,10 +230,11 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
             name="expiresAt"
             value={credentialData.expiresAt}
             onChange={handleInputChange}
-            style={{ width: '100%', padding: '0.7rem', border: '1.5px solid #b6b8d6', borderRadius: 8, fontSize: 16, background: '#fff', transition: 'border 0.2s, box-shadow 0.2s' }}
+            style={{ width: '100%', padding: '0.7rem', border: '1.5px solid #a5b4fc', borderRadius: 8, fontSize: 16, background: '#f3f4f6', color: '#334155', transition: 'border 0.2s, box-shadow 0.2s' }}
             aria-label="Expiration Date"
             onFocus={e => (e.target.style.boxShadow = '0 0 0 2px #6366f1')}
             onBlur={e => (e.target.style.boxShadow = 'none')}
+            min={getMinExpiration()}
           />
         </div>
         <button
