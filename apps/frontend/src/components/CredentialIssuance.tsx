@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Connection, PublicKey, Transaction } from '@solana/web3.js';
+import React, { useState, useEffect } from 'react';
+import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { create } from 'ipfs-http-client';
+import { uploadToPinata } from '../utils/ipfs';
 
 interface CredentialIssuanceProps {
   programId: PublicKey;
@@ -16,8 +16,25 @@ interface CredentialData {
   expiresAt: string;
 }
 
-export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programId, connection }) => {
-  const wallet = useWallet();
+const CREDENTIAL_TYPES = [
+  'Age Verification',
+  'Date of Birth Verification',
+  'Third Party Membership ID Verification',
+  'Blood Type Verification',
+  'Parents Name Verification'
+];
+
+const VALIDITY_PERIODS = [
+  { label: '1 Year', value: 1 },
+  { label: '2 Years', value: 2 },
+  { label: '3 Years', value: 3 }
+];
+
+export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ 
+  programId, 
+  connection
+}) => {
+  const wallet = useWallet(); // This will be both the issuer and authority
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentialData, setCredentialData] = useState<CredentialData>({
@@ -29,21 +46,9 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
   });
   const [txSignature, setTxSignature] = useState<string | null>(null);
   const [ipfsHash, setIpfsHash] = useState<string | null>(null);
+  const [validityPeriod, setValidityPeriod] = useState<number>(1);
 
-  // Initialize IPFS client with Infura
-  const ipfs = create({
-    host: 'ipfs.infura.io',
-    port: 5001,
-    protocol: 'https',
-    headers: {
-      authorization: 'Basic ' + btoa(
-        import.meta.env.VITE_INFURA_IPFS_PROJECT_ID + ':' +
-        import.meta.env.VITE_INFURA_IPFS_PROJECT_SECRET
-      ),
-    },
-  });
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setCredentialData(prev => ({
       ...prev,
@@ -51,12 +56,23 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
     }));
   };
 
-  const handleClaimChange = (key: string, value: string) => {
+  const handleValidityPeriodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const years = parseInt(e.target.value);
+    setValidityPeriod(years);
+    const newExpiryDate = new Date();
+    newExpiryDate.setFullYear(newExpiryDate.getFullYear() + years);
+    setCredentialData(prev => ({
+      ...prev,
+      expiresAt: newExpiryDate.toISOString()
+    }));
+  };
+
+  const handleClaimValueChange = (value: string) => {
     setCredentialData(prev => ({
       ...prev,
       claims: {
         ...prev.claims,
-        [key]: value
+        [prev.type]: value
       }
     }));
   };
@@ -92,47 +108,101 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
         issuer: wallet.publicKey.toString(),
       };
 
-      // 2. Upload to IPFS
+      // 2. Upload to IPFS using Pinata
       let cid;
       try {
-        const result = await ipfs.add(JSON.stringify(credential));
-        cid = result.cid;
-        setIpfsHash(cid.toString());
+        const apiKey = import.meta.env.VITE_PINATA_JWT;
+        if (!apiKey) {
+          throw new Error('Pinata API key not configured');
+        }
+        cid = await uploadToPinata(JSON.stringify(credential), apiKey);
+        setIpfsHash(cid);
       } catch (ipfsErr) {
+        console.error('IPFS upload error:', ipfsErr);
         setError('Failed to upload credential to IPFS. Please try again.');
         setLoading(false);
         return;
       }
-      const credentialRef = Buffer.from(cid.toString());
 
-      // 3. Create the issuance instruction
+      // Create a 32-byte buffer from the IPFS hash
+      const hashBuffer = Buffer.from(cid);
+      const credentialRef = Buffer.alloc(32);
+      hashBuffer.copy(credentialRef, 0, 0, Math.min(32, hashBuffer.length));
+
+      // 3. Find PDAs for identity and credential accounts
+      const [identityAccount] = await PublicKey.findProgramAddress(
+        [Buffer.from('identity'), wallet.publicKey.toBuffer()],
+        programId
+      );
+
       const [credentialAccount] = await PublicKey.findProgramAddress(
         [Buffer.from('credential'), credentialRef],
         programId
       );
 
-      const instruction = {
+      // 4. Create the instruction data
+      const instructionData = Buffer.from([
+        6, // IssueCredential instruction
+        ...credentialRef,
+        ...Buffer.from(new Date().getTime().toString()),
+        ...Buffer.from(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).getTime().toString()),
+      ]);
+
+      // 5. Create the transaction
+      const transaction = new Transaction();
+      transaction.add({
         programId,
         keys: [
           { pubkey: credentialAccount, isSigner: false, isWritable: true },
-          { pubkey: wallet.publicKey, isSigner: true, isWritable: false },
+          { pubkey: identityAccount, isSigner: false, isWritable: false },
+          { pubkey: wallet.publicKey, isSigner: true, isWritable: false }, // issuer and authority
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
         ],
-        data: Buffer.from([
-          6, // IssueCredential instruction
-          ...credentialRef,
-          ...Buffer.from(new Date().getTime().toString()),
-          ...Buffer.from(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).getTime().toString()),
-        ]),
-      };
+        data: instructionData,
+      });
 
-      const transaction = new Transaction().add(instruction);
+      // Get the latest blockhash
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.lastValidBlockHeight = lastValidBlockHeight;
+      transaction.feePayer = wallet.publicKey;
+
       let signature;
       try {
-        signature = await wallet.sendTransaction(transaction, connection);
-        await connection.confirmTransaction(signature);
+        // Check if wallet supports transaction signing
+        if (!wallet.signTransaction) {
+          throw new Error('Wallet does not support transaction signing');
+        }
+
+        // Sign and send the transaction
+        const signedTransaction = await wallet.signTransaction(transaction);
+        signature = await connection.sendRawTransaction(signedTransaction.serialize(), {
+          skipPreflight: false,
+          preflightCommitment: 'confirmed',
+          maxRetries: 3,
+        });
+
+        // Wait for confirmation
+        const confirmation = await connection.confirmTransaction({
+          signature,
+          blockhash,
+          lastValidBlockHeight,
+        });
+
+        if (confirmation.value.err) {
+          throw new Error(`Transaction failed: ${confirmation.value.err}`);
+        }
+
         setTxSignature(signature);
-      } catch (solanaErr) {
-        setError('Failed to send transaction to Solana. Please try again.');
+      } catch (solanaErr: any) {
+        console.error('Solana transaction error:', solanaErr);
+        let errorMessage = 'Failed to send transaction to Solana. ';
+        if (solanaErr.message) {
+          errorMessage += solanaErr.message;
+        } else if (solanaErr.error) {
+          errorMessage += solanaErr.error.message || 'Unknown error';
+        }
+        setError(errorMessage);
         setLoading(false);
         return;
       }
@@ -146,9 +216,9 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
         expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
       });
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error issuing credential:', err);
-      setError('Unexpected error occurred during credential issuance.');
+      setError(err.message || 'Unexpected error occurred during credential issuance.');
     } finally {
       setLoading(false);
     }
@@ -172,7 +242,7 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
           borderRadius: '1.5rem',
           boxShadow: '0 8px 32px rgba(59,130,246,0.10)',
           padding: '2.8rem 2.2rem',
-          maxWidth: 540,
+          maxWidth: 640,
           width: '100%',
           position: 'relative',
           overflow: 'hidden',
@@ -190,53 +260,52 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
         </h2>
         <div className="form-group" style={{ marginBottom: '1.5rem', position: 'relative', zIndex: 1 }}>
           <label style={{ fontWeight: 600, color: '#374151', marginBottom: 6, display: 'block' }}>Credential Type</label>
-          <input
-            type="text"
-            name="type"
-            value={credentialData.type}
-            onChange={handleInputChange}
-            placeholder="e.g., AgeVerification"
-            style={{ width: '100%', padding: '0.7rem', border: '1.5px solid #b6b8d6', borderRadius: 8, fontSize: 16, marginBottom: 8, background: '#fff', transition: 'border 0.2s, box-shadow 0.2s' }}
-            aria-label="Credential Type"
-            onFocus={e => (e.target.style.boxShadow = '0 0 0 2px #6366f1')}
-            onBlur={e => (e.target.style.boxShadow = 'none')}
-          />
-        </div>
-        <div className="form-group" style={{ marginBottom: '1.5rem', position: 'relative', zIndex: 1 }}>
-          <label style={{ fontWeight: 600, color: '#374151', marginBottom: 6, display: 'block' }}>Claims</label>
-          <div className="claims-container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <input
-              type="text"
-              placeholder="Claim key"
-              onChange={(e) => handleClaimChange(e.target.value, '')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <select
+              name="type"
+              value={credentialData.type}
+              onChange={handleInputChange}
               style={{ padding: '0.7rem', border: '1.5px solid #b6b8d6', borderRadius: 8, fontSize: 16, background: '#fff', transition: 'border 0.2s, box-shadow 0.2s' }}
-              aria-label="Claim Key"
-              onFocus={e => (e.target.style.boxShadow = '0 0 0 2px #6366f1')}
-              onBlur={e => (e.target.style.boxShadow = 'none')}
-            />
-            <input
-              type="text"
-              placeholder="Claim value"
-              onChange={(e) => handleClaimChange(Object.keys(credentialData.claims)[0], e.target.value)}
-              style={{ padding: '0.7rem', border: '1.5px solid #b6b8d6', borderRadius: 8, fontSize: 16, background: '#fff', transition: 'border 0.2s, box-shadow 0.2s' }}
-              aria-label="Claim Value"
-              onFocus={e => (e.target.style.boxShadow = '0 0 0 2px #6366f1')}
-              onBlur={e => (e.target.style.boxShadow = 'none')}
-            />
+              aria-label="Credential Type"
+            >
+              <option value="">Select a type</option>
+              {CREDENTIAL_TYPES.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            {credentialData.type && (
+              <input
+                type="text"
+                placeholder="Claim value"
+                value={credentialData.claims[credentialData.type] || ''}
+                onChange={(e) => handleClaimValueChange(e.target.value)}
+                style={{ padding: '0.7rem', border: '1.5px solid #b6b8d6', borderRadius: 8, fontSize: 16, background: '#fff', transition: 'border 0.2s, box-shadow 0.2s' }}
+                aria-label="Claim Value"
+              />
+            )}
           </div>
         </div>
-        <div className="form-group" style={{ marginBottom: '2rem', position: 'relative', zIndex: 1 }}>
-          <label style={{ fontWeight: 600, color: '#374151', marginBottom: 6, display: 'block' }}>Expiration Date</label>
-          <input
-            type="datetime-local"
-            name="expiresAt"
-            value={credentialData.expiresAt}
-            onChange={handleInputChange}
-            style={{ width: '100%', padding: '0.7rem', border: '1.5px solid #b6b8d6', borderRadius: 8, fontSize: 16, background: '#fff', transition: 'border 0.2s, box-shadow 0.2s' }}
-            aria-label="Expiration Date"
-            onFocus={e => (e.target.style.boxShadow = '0 0 0 2px #6366f1')}
-            onBlur={e => (e.target.style.boxShadow = 'none')}
-          />
+        <div className="form-group" style={{ marginBottom: '1.5rem', position: 'relative', zIndex: 1 }}>
+          <label style={{ fontWeight: 600, color: '#374151', marginBottom: 6, display: 'block' }}>Valid Until</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <select
+              value={validityPeriod}
+              onChange={handleValidityPeriodChange}
+              style={{ padding: '0.7rem', border: '1.5px solid #b6b8d6', borderRadius: 8, fontSize: 16, background: '#fff', transition: 'border 0.2s, box-shadow 0.2s' }}
+              aria-label="Validity Period"
+            >
+              {VALIDITY_PERIODS.map(period => (
+                <option key={period.value} value={period.value}>{period.label}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={new Date(credentialData.expiresAt).toLocaleDateString()}
+              readOnly
+              style={{ padding: '0.7rem', border: '1.5px solid #b6b8d6', borderRadius: 8, fontSize: 16, background: '#f3f4f6', transition: 'border 0.2s, box-shadow 0.2s' }}
+              aria-label="Expiration Date"
+            />
+          </div>
         </div>
         <button
           onClick={issueCredential}
@@ -248,37 +317,29 @@ export const CredentialIssuance: React.FC<CredentialIssuanceProps> = ({ programI
             borderRadius: '1.2rem',
             padding: '1.1rem 2.8rem',
             fontSize: '1.15rem',
-            fontWeight: 800,
+            fontWeight: 600,
             cursor: loading || !wallet.publicKey ? 'not-allowed' : 'pointer',
-            boxShadow: '0 4px 18px rgba(59,130,246,0.10)',
-            letterSpacing: '0.01em',
-            textShadow: '0 1px 8px rgba(59,130,246,0.08)',
-            marginTop: '0.5rem',
-            borderWidth: 3,
-            borderStyle: 'solid',
-            borderImage: 'linear-gradient(90deg, #a5b4fc 0%, #6366f1 100%) 1',
-            animation: 'glowBorder 2.5s infinite alternate',
-            transition: 'background 0.18s, transform 0.18s, box-shadow 0.18s',
             opacity: loading || !wallet.publicKey ? 0.7 : 1,
+            transition: 'all 0.2s',
+            width: '100%',
+            position: 'relative',
+            zIndex: 1,
           }}
-          aria-label="Issue a new credential (e.g., Over 18, KYC passed) and store it securely on IPFS."
-          title="Issue a new credential (e.g., Over 18, KYC passed) and store it securely on IPFS."
-          onMouseOver={e => (e.currentTarget.style.transform = 'scale(1.04)')}
-          onMouseOut={e => (e.currentTarget.style.transform = 'scale(1)')}
         >
           {loading ? 'Issuing...' : 'Issue Credential'}
         </button>
         {error && (
-          <div style={{ color: '#d32f2f', marginTop: 18, padding: '1rem', background: '#ffebee', borderRadius: 8, fontWeight: 600, fontSize: 15 }}>{error}</div>
-        )}
-        {txSignature && (
-          <div style={{ color: '#6366f1', marginTop: 18, fontSize: 15, wordBreak: 'break-all' }}>
-            Tx: <a href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>View on Solana Explorer</a>
+          <div style={{ color: '#EF4444', marginTop: '1rem', textAlign: 'center' }}>
+            {error}
           </div>
         )}
-        {ipfsHash && (
-          <div style={{ color: '#10b981', marginTop: 8, fontSize: 15, wordBreak: 'break-all' }}>
-            IPFS: <a href={`https://ipfs.io/ipfs/${ipfsHash}`} target="_blank" rel="noopener noreferrer" style={{ color: '#059669', textDecoration: 'underline' }}>{ipfsHash}</a>
+        {txSignature && (
+          <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+            <p style={{ color: '#059669' }}>Credential issued successfully!</p>
+            <p style={{ fontSize: '0.875rem', color: '#6B7280' }}>Transaction: {txSignature}</p>
+            {ipfsHash && (
+              <p style={{ fontSize: '0.875rem', color: '#6B7280' }}>IPFS Hash: {ipfsHash}</p>
+            )}
           </div>
         )}
         <style>{`

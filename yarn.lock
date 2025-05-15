@@ -5547,7 +5547,7 @@ idb-keyval@^6.2.1:
   resolved "https://registry.npmjs.org/idb-keyval/-/idb-keyval-6.2.1.tgz"
   integrity sha512-8Sb3veuYCyrZL+VBt9LJfZjLUPWVvqn8tG28VqYNFCo43KHcKuq+b4EiXGeuaLAQWL2YmyDgMp2aSpH9JHsEQg==
 
-"idenclave-frontend@file:/Users/malikathaiyab/solana_workspace/Q2builder_cohort/idenclave_solana/apps/frontend":
+"idenclave-frontend@file:/Users/malikathaiyab/solana_workspace/Q2builder_cohort/idenclave/apps/frontend":
   version "0.1.0"
   resolved "file:apps/frontend"
   dependencies:

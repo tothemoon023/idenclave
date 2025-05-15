@@ -1,6 +1,9 @@
 use anchor_lang::prelude::*;
 
-declare_id!("E7C52ahzQMJB7u9LQmbTtRxYDeHS814HGeWZcWZgkuag"); // Updated to match new program ID
+pub mod credential;
+use crate::credential::Credential;
+
+declare_id!("GhdfjF2uHkx45jWaLTaHLfTeCoEsnAnyi2ZcsHxpCNha");
 
 #[program]
 pub mod idenclave {
@@ -10,6 +13,23 @@ pub mod idenclave {
         let identity = &mut ctx.accounts.identity;
         identity.authority = *ctx.accounts.authority.key;
         identity.is_initialized = true;
+        Ok(())
+    }
+
+    pub fn issue_credential(
+        ctx: Context<IssueCredential>,
+        credential_ref: [u8; 32],
+        issued_at: i64,
+        expires_at: i64,
+    ) -> Result<()> {
+        let credential = &mut ctx.accounts.credential;
+        credential.is_initialized = true;
+        credential.revoked = false;
+        credential.identity = ctx.accounts.identity.key();
+        credential.issuer = ctx.accounts.issuer.key();
+        credential.credential_ref = credential_ref;
+        credential.issued_at = issued_at;
+        credential.expires_at = expires_at;
         Ok(())
     }
 }
@@ -32,6 +52,29 @@ pub struct RegisterIdentity<'info> {
     )]
     pub identity: Account<'info, Identity>,
     #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(credential_ref: [u8; 32])]
+pub struct IssueCredential<'info> {
+    #[account(
+        init,
+        payer = issuer,
+        space = 8 + Credential::LEN,
+        seeds = [b"credential", credential_ref.as_ref()],
+        bump
+    )]
+    pub credential: Account<'info, Credential>,
+    #[account(
+        seeds = [b"identity", identity.authority.as_ref()],
+        bump,
+        has_one = authority
+    )]
+    pub identity: Account<'info, Identity>,
+    #[account(mut)]
+    pub issuer: Signer<'info>,
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }

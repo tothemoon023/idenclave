@@ -1,0 +1,92 @@
+Credential Issuance
+##CODE BASED REVIEW
+Here’s a review of your Credential Issuance flow based on the code in CredentialIssuance.tsx:
+Credential Issuance Flow Review
+
+1. Credential Data Preparation
+User enters credential type, claims, and expiration date.
+The issuer is set to the connected wallet’s public key.
+The credential is serialized to JSON.
+
+2. IPFS Upload
+The credential JSON is uploaded to IPFS via Pinata.
+The resulting IPFS CID is used as a reference.
+
+3. PDA Derivation
+The credential account PDA is derived using:
+Apply to flowinstruct...
+]
+where credentialRef is the IPFS CID as a buffer.
+
+4. Solana Transaction
+A custom instruction is constructed and sent to the program.
+The instruction data is manually constructed (not using Anchor’s TypeScript client).
+The transaction is sent and confirmed.
+
+5. UI Feedback
+Shows transaction signature and IPFS hash on success.
+Shows error messages on failure.
+
+Potential Issues / Improvements
+1.Manual Instruction Construction:
+You are not using the Anchor TypeScript client for this instruction, which means you must keep the instruction data format in sync with your Rust program.
+If your Anchor program exposes an issue_credential instruction, you should use the Anchor client for safety and maintainability.
+
+2.Claims Input:
+The claims input UI only allows one key-value pair at a time. For multiple claims, you may want to allow dynamic addition/removal of claim fields.
+
+3.Credential Account Structure:
+Make sure your Solana program expects the PDA and data format you are sending.
+
+4.Error Handling:
+Good error handling for IPFS and Solana errors.
+
+##INSTRUCTIONS YO CHECK CREDENTIAL ISSUANCE FLOW IN UI
+
+Here are specific test instructions for the Credential Issuance flow in your Idenclave MVP:
+
+1. Prerequisites
+Your wallet is connected to Solana devnet and has some SOL.
+You have already registered your DID (identity account) with this wallet.
+The backend program is deployed and the frontend is running.
+
+2. Steps to Test Credential Issuance
+    
+    A. Open the Credential Issuance Page
+    Navigate to the CredentialIssuance page/component in your app.
+    
+    B. Fill Out the Credential Form
+    1.Credential Type:
+    Enter a type, e.g., AgeVerification or Membership.
+    
+    2.Claims:
+    Enter a key (e.g., age) and a value (e.g., 21).
+    If your UI only allows one claim, just fill that in. (For multiple claims, you may need to adjust the UI.)
+    
+    3.Expiration Date:
+    Set a future date/time (default is one year from now).
+
+C. Issue the Credential
+Click the "Issue Credential" button.
+
+D. Approve the Transaction
+Your wallet will prompt you to approve the transaction.
+Approve it.
+
+E. Observe the Results
+On success, you should see:
+    A transaction signature (with a link to Solana Explorer).
+    The IPFS hash of the credential.
+On failure, you’ll see an error message.
+    If this happens, copy the error and let me know.
+
+3. What to Check
+    The transaction is confirmed on Solana Explorer.
+    The credential data is uploaded to IPFS (you can view it using the IPFS hash).
+    On success, you’ll get a CID you can view at https://gateway.pinata.cloud/ipfs/<cid>
+    No errors are shown in the UI.
+    The credential account is created on-chain (if you want to check via Solana CLI or Explorer).
+
+4. If You Encounter Errors
+Take a screenshot or copy the error message.
+Let me know exactly what you entered in the form and what the error says.

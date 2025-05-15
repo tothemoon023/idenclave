@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { uploadToIPFS } from '../../utils/ipfs';
+import { uploadToPinata } from '../../utils/ipfs';
 import { encryptWithAES } from '../../utils/encryption';
 
 const UploadCredentialToIPFS: React.FC = () => {
@@ -14,10 +14,12 @@ const UploadCredentialToIPFS: React.FC = () => {
     setError(null);
     try {
       const encrypted = encryptWithAES(credential, passphrase);
-      const hash = await uploadToIPFS(encrypted);
+      const apiKey = import.meta.env.VITE_PINATA_JWT;
+      if (!apiKey) throw new Error('Pinata API key not set');
+      const hash = await uploadToPinata(encrypted, apiKey);
       setCid(hash);
     } catch (e: any) {
-      setError(e.message || 'Upload failed');
+      setError((e && e.message) ? e.message : 'Upload failed');
     } finally {
       setLoading(false);
     }
@@ -109,26 +111,27 @@ const UploadCredentialToIPFS: React.FC = () => {
         />
       </label>
       <button
-        disabled={true}
+        disabled={loading}
         style={{
-          background: '#cbd5e1',
+          background: loading ? '#cbd5e1' : '#3b82f6',
           color: '#fff',
           border: 'none',
           borderRadius: 7,
           padding: '12px 28px',
           fontWeight: 700,
           fontSize: 17,
-          cursor: 'not-allowed',
+          cursor: loading ? 'not-allowed' : 'pointer',
           boxShadow: '0 2px 12px rgba(59,130,246,0.07)',
           marginBottom: 12,
         }}
-        title="Browser uploads are no longer supported by web3.storage. Use the CLI helper below."
+        title="Encrypt & Upload to NFT.Storage"
+        onClick={handleUpload}
       >
-        Encrypt & Upload (Disabled)
+        {loading ? 'Uploading...' : 'Encrypt & Upload'}
       </button>
       <div style={{ color: '#dc2626', fontWeight: 600, marginTop: 10, marginBottom: 6 }}>
-        <span role="img" aria-label="warning">⚠️</span> Browser uploads to web3.storage are no longer supported.<br />
-        Please use the CLI helper below to upload your encrypted credential.
+        <span role="img" aria-label="warning">⚠️</span> Make sure your NFT.Storage API key is set in your environment.<br />
+        Your credential is encrypted client-side and uploaded to IPFS via NFT.Storage.
       </div>
       {cid && (
         <div style={{
@@ -165,7 +168,7 @@ const UploadCredentialToIPFS: React.FC = () => {
       {error && <div style={{ color: '#dc2626', fontWeight: 600, marginTop: 12 }}>{error}</div>}
       <div style={{ fontSize: 13, color: '#64748b', marginTop: 16 }}>
         Your credential is encrypted client-side and uploaded to IPFS. <br />
-        <b>Keep your passphrase safe!</b> You’ll need it to decrypt later.
+        <b>Keep your passphrase safe!</b> You'll need it to decrypt later.
       </div>
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }

@@ -54,13 +54,9 @@ myanchorproject/**/*.rs.bk
 
 # Rust/Cargo
 Cargo.lock
-Cargo.toml
 myanchorproject/Cargo.lock
-myanchorproject/Cargo.toml
 packages/contracts-build/Cargo.lock
-packages/contracts-build/Cargo.toml
 packages/idenclave/Cargo.lock
-packages/idenclave/Cargo.toml
 
 # Ignore build artifacts in packages
 packages/contracts-build/target/
