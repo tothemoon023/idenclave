@@ -2,7 +2,8 @@ Program path: /Users/malikathaiyab/solana_workspace/Q2builder_cohort/malika_caps
 Program Id: 7KkYh3XpHkZapKE54NFX7HWN52eLMBPHp9sjhiE4B4JJ
 
 Program Id: HbZUJZypivrgJMZZ4QVwpHHk1uCHFmBmCi4pYbxZKi2r
-Program Id: E7C52ahzQMJB7u9LQmbTtRxYDeHS814HGeWZcWZgkuag// new 
+Program Id: E7C52ahzQMJB7u9LQmbTtRxYDeHS814HGeWZcWZgkuag
+Program Id: GhdfjF2uHkx45jWaLTaHLfTeCoEsnAnyi2ZcsHxpCNha// new 
 
 Check this project root and analyze the project. It is an Anchor project called IDenclave -a decentralized identity and credential management system built on Solana. 
 It enables users to register decentralized identities (DIDs), issue and store verifiable credentials (VCs) on IPFS, and generate zero-knowledge proofs (ZKPs) for privacy-preserving verification. 

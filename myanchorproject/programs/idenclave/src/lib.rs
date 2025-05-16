@@ -32,6 +32,14 @@ pub mod idenclave {
         credential.expires_at = expires_at;
         Ok(())
     }
+
+    pub fn close_identity(ctx: Context<CloseIdentity>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn close_credential(ctx: Context<CloseCredential>) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[account]
@@ -77,4 +85,30 @@ pub struct IssueCredential<'info> {
     pub issuer: Signer<'info>,
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CloseIdentity<'info> {
+    #[account(
+        mut,
+        close = authority,
+        seeds = [b"identity", authority.key().as_ref()],
+        bump
+    )]
+    pub identity: Account<'info, Identity>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CloseCredential<'info> {
+    #[account(
+        mut,
+        close = issuer,
+        seeds = [b"credential", credential.credential_ref.as_ref()],
+        bump
+    )]
+    pub credential: Account<'info, Credential>,
+    #[account(mut)]
+    pub issuer: Signer<'info>,
 }
